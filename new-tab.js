@@ -5,7 +5,29 @@ const deadlineDueDate = document.getElementById("deadline-time");
 const newButton = document.getElementById("add-new");
 const deleteAllButton = document.getElementById("del-all");
 
-todayDisplay.innerText = `Today is ${(new Date()).toLocaleString()}`;
+let deadlinesListArr = [];
+
+function tick() {
+    todayDisplay.innerText = `Today is ${(new Date()).toLocaleString()}`;
+    deadlinesList.innerHTML = deadlinesListArr.length > 0 ? "" : ":) no deadlines!";
+    for(let deadline of deadlinesListArr) {
+        const node = document.createElement("div");
+        node.id = `deadline-element-${deadline.name}`;
+        const dueDate = new Date(deadline.due);
+        const delButton = document.createElement("button");
+        delButton.addEventListener("click", () => {
+            chrome.storage.local.get(["deadlines"], (result) => {
+                deadlinesListArr = result.deadlines.filter(d => d.name !== deadline.name);
+                chrome.storage.local.set({"deadlines": deadlinesListArr});
+            })
+            delButton.parentElement.remove();
+        });
+        delButton.textContent = "X";
+        node.innerHTML = `<b>${deadline.name}</b> is due on <i>${dueDate.toLocaleString()}</i> which is in <i>${timeUntil(dueDate)}</i>`;
+        node.appendChild(delButton);
+        deadlinesList.appendChild(node);
+    }
+}
 
 function timeUntil(dueDate) {
     let milliDiff = dueDate - Date.now();
@@ -21,14 +43,7 @@ function timeUntil(dueDate) {
 
 chrome.storage.local.get(["deadlines"], (result) => {
     if(result.deadlines) {
-        for(let deadline of result.deadlines) {
-            const node = document.createElement("div");
-            const dueDate = new Date(deadline.due);
-            node.innerText = `${deadline.name} is due on ${dueDate.toLocaleString()} which is in ${timeUntil(dueDate)}`;
-            deadlinesList.appendChild(node);
-        }
-    } else {
-        deadlinesList.innerText = ":) no deadlines!";
+        deadlinesListArr = result.deadlines;
     }
 })
 
@@ -37,7 +52,8 @@ newButton.addEventListener("click", () => {
         chrome.storage.local.get(["deadlines"], (result) => {
             let deadlinesArrNew = result.deadlines || [];
             deadlinesArrNew.push({name: deadlineName.value, due: deadlineDueDate.value});
-            chrome.storage.local.set({"deadlines": deadlinesArrNew})
+            chrome.storage.local.set({"deadlines": deadlinesArrNew});
+            location.reload();
         })
     }
     
@@ -48,3 +64,6 @@ deleteAllButton.addEventListener("click", () => {
         location.reload();
     });
 })
+tick();
+
+setInterval(tick, 500);
